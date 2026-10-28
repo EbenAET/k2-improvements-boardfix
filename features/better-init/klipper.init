@@ -136,6 +136,13 @@ copy_config()
         "F021")
             if [ "$board" = "CR0CN240319C13" ]; then
                 config_dir=F021_CR0CN240319C13
+            elif [ "$board" = "CR0CN200400C10" ]; then
+                # prefer a board-specific OEM folder, else fall back
+                if [ -d "$ROM_CONFIG_DIR/F021_CR0CN200400C10" ]; then
+                    config_dir=F021_CR0CN200400C10
+                else
+                    config_dir=F021_CR0CN240319C13
+                fi
             else
                 config_dir=
             fi
@@ -161,6 +168,13 @@ copy_config()
         echo "config_dir is not exist!"
         exit 0
     }
+
+    # F021: remember the existing motor_control.cfg so it can be restored
+    MOTOR_CFG_SAVED=/tmp/motor_control.cfg.f021.keep
+    rm -f "$MOTOR_CFG_SAVED"
+    if [ "x$model" = "xF021" ] && [ -s $PRINTER_CONFIG_DIR/motor_control.cfg ]; then
+        cp -af $PRINTER_CONFIG_DIR/motor_control.cfg "$MOTOR_CFG_SAVED"
+    fi
 
     if [ -s $PRINTER_CONFIG_DIR/printer.cfg ]; then
         if [ -s $PRINTER_CONFIG_DIR/printer_params.cfg ]; then
@@ -196,6 +210,15 @@ copy_config()
     else
         cp -af "${CONFIG_PATH}"/*.cfg $PRINTER_CONFIG_DIR/
         sync
+    fi
+
+    # F021: never let a copied config overwrite the printer's own motor_control.cfg
+    if [ "x$model" = "xF021" ]; then
+        if [ -f "$MOTOR_CFG_SAVED" ]; then
+            cp -af "$MOTOR_CFG_SAVED" $PRINTER_CONFIG_DIR/motor_control.cfg
+            rm -f "$MOTOR_CFG_SAVED"
+            sync
+        fi
     fi
 
     [ "x${gcode_dir}" = "x" ] && {
