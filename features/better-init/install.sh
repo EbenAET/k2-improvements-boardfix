@@ -21,3 +21,16 @@ ln -sf ${SCRIPT_DIR}/bin/systemctl /mnt/UDISK/bin/
 
 # update the path
 echo 'export PATH=/mnt/UDISK/bin:$PATH' > /etc/profile.d/better-init.sh
+
+# Creality Helper Script's patch_stock_configs restores the F008 motor config on boot; make it board-aware.
+HELPER_SYSTEM_SH=/mnt/UDISK/helper-script/scripts/system.sh
+if [ -f "$HELPER_SYSTEM_SH" ] && ! grep -q 'F021_CR0CN200400C10' "$HELPER_SYSTEM_SH"; then
+    cp -n "$HELPER_SYSTEM_SH" "${HELPER_SYSTEM_SH}.pre-f021-fix"
+    # prefixed names so the helper script's own variables are not clobbered
+    sed -i 's|^\([[:space:]]*\)local stock_motor_cfg="/rom/usr/share/klipper/config/F008_CR0CN240319C13/motor_control.cfg"|&\n\1f021_model=$(get_sn_mac.sh model)\n\1f021_board=$(get_sn_mac.sh board)\n\1if [ "$f021_model" = "F021" ] \&\& [ "$f021_board" = "CR0CN200400C10" ]; then\n\1    stock_motor_cfg="/rom/usr/share/klipper/config/F021_CR0CN200400C10/motor_control.cfg"\n\1fi|' "$HELPER_SYSTEM_SH"
+    if grep -q 'F021_CR0CN200400C10' "$HELPER_SYSTEM_SH"; then
+        echo "[OK] Patched Creality Helper Script for F021 motor_control.cfg"
+    else
+        echo "[WARN] stock_motor_cfg line not found in $HELPER_SYSTEM_SH; helper script not patched"
+    fi
+fi
